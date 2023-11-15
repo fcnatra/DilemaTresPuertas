@@ -19,9 +19,6 @@
 
 		public int OpenDoorNonWinnerAvailable()
 		{
-			if (_game.SelectedDoor == 0)
-				throw new InvalidOperationException("Player must select a door before opening a \"discard\" door");
-
 			var doorToOpen = _game.GetDoorNonWinnerToOffer();
 			_game.OpenedDoor = doorToOpen;
 

@@ -47,6 +47,9 @@ namespace ConsoleUI.MontyHallProblem
 
 		public int GetDoorNonWinnerToOffer()
 		{
+			if (SelectedDoor == 0)
+				throw new InvalidOperationException("Player must select a door before opening a \"discard\" door");
+
 			List<int> availableDoors;
 			if (this.IsOver)
 				availableDoors = new List<int>();
