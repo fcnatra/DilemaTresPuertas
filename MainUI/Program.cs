@@ -1,49 +1,38 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using MontyHallProblem;
+
+using ConsoleUI.MontyHallProblem;
 
 Console.WriteLine("MontyHall problem - or Three doors dilemma");
 
-const int REPETITIONS = 500;
+const int REPETITIONS = 10;
 
+int playerWins = PlayGame(false);
+Console.WriteLine($"NOT CHANGING - Player wins: {playerWins}/{REPETITIONS} = {((double)playerWins / REPETITIONS) * 100}%");
 
-int _playerWins = 0;
-Console.WriteLine($"{REPETITIONS} Repetitions with player keeping the selected door: ");
-var gameSummary = Play(false);
-Console.WriteLine($"Player wins {_playerWins}/{REPETITIONS} times ({_playerWins * 100 / REPETITIONS}%)");
-
-
-
-_playerWins = 0;
-Console.WriteLine($"\n{REPETITIONS} Repetitions with player CHANGIND doors: ");
-gameSummary = Play(true);
-Console.WriteLine($"Player wins {_playerWins}/{REPETITIONS} times ({_playerWins * 100 / REPETITIONS}%)");
-
-
-Console.WriteLine("END.");
+playerWins = PlayGame(true);
+Console.WriteLine($"    CHANGING - Player wins: {playerWins}/{REPETITIONS} = {((double)playerWins / REPETITIONS) * 100}%");
 
 
 
-GameSummary Play(bool changeDoors)
+
+static int PlayGame(bool changeSelection)
 {
-	var gameSummary = new GameSummary();
+	var playerWins = 0;
+
 	for (int i = 0; i < REPETITIONS; i++)
 	{
-		gameSummary = Game.Play(changeDoors);
+		var game = new Game();
+		var player = new Player(game);
+		var host = new Host(game);
 
-		//PrintGameSummary(gameSummary);
+		player.SelectRandomDoor();
+		host.OpenDoorNonWinnerAvailable();
 
-		if (gameSummary.PlayerWins) _playerWins++;
+		if (changeSelection) player.ChangeSelection();
+
+		player.OpenSelection();
+		if (host.HasPlayerWon) playerWins++;
 	}
 
-	return gameSummary;
-}
-
-void PrintGameSummary(GameSummary gameSummary)
-{
-	Console.WriteLine("\tW{0} P{1} M{2} M{3} {4}",
-		gameSummary.WinnerDoor,
-		gameSummary.SelectedDoor,
-		gameSummary.FirstDoorOpened,
-		gameSummary.SecondDoorOpened,
-		gameSummary.PlayerWins ? "PLAYER WINS ···················" : "");
+	return playerWins;
 }

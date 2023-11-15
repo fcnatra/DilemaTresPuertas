@@ -1,28 +1,38 @@
-﻿// See https://aka.ms/new-console-template for more information
-using ConsoleUI.MontyHallProblem.Interfaces;
-
-namespace MontyHallProblem
+﻿namespace ConsoleUI.MontyHallProblem
 {
 	public class Player
 	{
-		private IGameForPlayer game;
+		private Game _game;
 
-		public Player(IGameForPlayer game)
+		public Player(Game game)
 		{
-			this.game = game;
+			this._game = game;
 		}
 
-		public void ChangeSelectedDoor()
+		public int ChangeSelection()
 		{
-			game.ChangeSelectedDoor();
+			var openedDoor = _game.GetAvailableDoors();
+			var doorToChange = openedDoor.First();
+			_game.SelectedDoor = doorToChange;
+
+			return doorToChange;
 		}
 
-		public int SelectsDoor()
+		public int OpenSelection()
 		{
-			var randomDoor = (DoorNumber)new Random().Next(1, 4);
-			game.SelectedDoor = randomDoor;
+			_game.OpenSelection();
+			return _game.SelectedDoor;
+		}
 
-			return randomDoor;
+		public int SelectRandomDoor()
+		{
+			return SelectDoor(() => new Random().Next(1, 4));
+		}
+
+		public int SelectDoor(Func<int> selectionMethod)
+		{
+			_game.SelectedDoor = selectionMethod();
+			return _game.SelectedDoor;
 		}
 	}
 }

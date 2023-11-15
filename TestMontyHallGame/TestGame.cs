@@ -1,124 +1,180 @@
-using ConsoleUI.MontyHallProblem.Interfaces;
-using MontyHallProblem;
+using Xunit;
+using ConsoleUI.MontyHallProblem;
+using System.Collections.Generic;
+using Xunit.Sdk;
 
 namespace TestMontyHallGame
 {
 	public class TestGame
 	{
 		[Fact]
-		public void NewGame_IsInitialized()
+		public void GivenNewGame_ThreeDoorsAreClosed()
 		{
 			var game = new Game();
 
-			Assert.Equal(Game.OK, game.ErrorMessage);
-			Assert.Equal(0, game.SelectedDoor);
-			Assert.Equal(0, game.OpenedDoor);
-			Assert.False(game.WinnerDoorIsSelected);
-			Assert.True(game.WinnerDoor > 0);
-			Assert.False(game.IsOver);
+			// ACT
+			List<int> availableDoors = game.GetAvailableDoors();
+
+			var expectedAvailableDoors = new List<int> { 1, 2, 3 };
+			Assert.Equal(3, availableDoors.Count);
+			Assert.All(availableDoors, (x) => expectedAvailableDoors.Contains(x));
+		}
+
+		[Theory]
+		[InlineData(1)]
+		[InlineData(2)]
+		[InlineData(3)]
+		public void GivenNewGame_Player_CanSelectDoors_1_to_3(int doorNumber)
+		{
+			var game = new Game();
+			var player = new Player(game);
+
+			// ACT
+			var selectedDoor = player.SelectDoor(() => doorNumber);
+
+			Assert.Equal(selectedDoor, game.SelectedDoor);
+		}
+
+		[Theory]
+		[InlineData(0)]
+		[InlineData(9)]
+		[InlineData(-6)]
+		public void GivenNewGame_Player_CanNotSelectDoors_OutOf1_to_3(int incorrectDoorNumber)
+		{
+			var game = new Game();
+			var player = new Player(game);
+
+			// ACT & ASSERT
+			Assert.Throws<ArgumentOutOfRangeException>(() => player.SelectDoor(() => incorrectDoorNumber));
 		}
 
 		[Fact]
-		public void SelectingDoor_BeforeOpenDoor_GameContinues()
+		public void GivenPlayerSelectedADoor_HostCanOpenDoor_NonWinnerAvailable()
 		{
 			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
 
-			game.SelectedDoor = (DoorNumber)2;
+			player.SelectDoor(() => 1);
 
-			Assert.Equal(Game.OK, game.ErrorMessage);
-			Assert.Equal(0, game.OpenedDoor);
-			Assert.False(game.IsOver);
+			// ACT
+			var openedDoor = host.OpenDoorNonWinnerAvailable();
+
+			Assert.NotEqual(host.GetWinnerDoor(), openedDoor);
+			Assert.NotEqual(game.SelectedDoor, openedDoor);
+			Assert.Equal(game.OpenedDoor, openedDoor);
 		}
 
 		[Fact]
-		public void GameEnds_WhenOpening_SecondDoor()
+		public void GiveNewGame_HostCanNotOpenDoor()
 		{
 			var game = new Game();
+			var host = new Host(game);
 
-			game.SelectedDoor = (DoorNumber)1;
-			game.OpenDoor((DoorNumber)2);
-			game.OpenDoor((DoorNumber)3);
+			// ACT & ASSERT
+			Assert.Throws<InvalidOperationException>(() => host.OpenDoorNonWinnerAvailable());
+		}
 
-			Assert.Equal(Game.OK, game.ErrorMessage);
+		[Fact]
+		public void GivenDoorOpened_PlayerCanChangeItsSelection()
+		{
+			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
+
+			player.SelectDoor(() => 1);
+			var openedDoor = host.OpenDoorNonWinnerAvailable();
+			var doorToChange = openedDoor == 2 ? 3 : 2;
+
+			// ACT
+			player.ChangeSelection();
+			var newSelection = game.SelectedDoor;
+
+			Assert.Equal(doorToChange, newSelection);
+		}
+
+		[Fact]
+		public void GivenDoorOpened_PlayerCanChangeItsSelectionMoreThanOnce()
+		{
+			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
+
+			player.SelectDoor(() => 1);
+			var openedDoor = host.OpenDoorNonWinnerAvailable();
+
+			// ACT
+			player.ChangeSelection();
+			var doorToChange = game.GetAvailableDoors().First();
+			player.ChangeSelection();
+			
+			var newSelection = game.SelectedDoor;
+			Assert.Equal(doorToChange, newSelection);
+		}
+
+		[Fact]
+		public void GivenDoorOpened_PlayerDecidesToOpenItsSelection()
+		{
+			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
+
+			int selectedDoor = player.SelectDoor(() => 1);
+			host.OpenDoorNonWinnerAvailable();
+
+			// ACT
+			var openedDoor = player.OpenSelection();
+
+			Assert.Equal(selectedDoor, openedDoor);
+		}
+
+		[Fact]
+		public void GivenSelectedDoorOpened_GameEnds()
+		{
+			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
+
+			int selectedDoor = player.SelectDoor(() => 1);
+			host.OpenDoorNonWinnerAvailable();
+
+			// ACT
+			var openedDoor = player.OpenSelection();
+
 			Assert.True(game.IsOver);
 		}
 
 		[Fact]
-		public void OpeningSameDoor_SecondTime_ReturnsError()
+		public void GivenGameOver_IfPlayerSelectedWinnerDoor_PlayerWins()
 		{
 			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
 
-			game.SelectedDoor = (DoorNumber)1;
-			game.OpenDoor((DoorNumber)2);
-			game.OpenDoor((DoorNumber)2);
+			var winnerDoor = host.GetWinnerDoor();
 
-			Assert.NotEqual(Game.OK, game.ErrorMessage);
-			Assert.False(game.IsOver);
+			player.SelectDoor(() => winnerDoor);
+			host.OpenDoorNonWinnerAvailable();
+
+			// ACT & ASSERT
+			player.OpenSelection();
+
+			Assert.True(host.HasPlayerWon);
 		}
 
 		[Fact]
-		public void OpeningDoor_BeforeSelectingDoor_ResultsInError()
+		public void GivenGameOver_PlayerCanChangeSelection()
 		{
 			var game = new Game();
+			var host = new Host(game);
+			var player = new Player(game);
 
-			game.OpenDoor((DoorNumber)2);
+			player.SelectDoor(() => 1);
+			host.OpenDoorNonWinnerAvailable();
+			player.OpenSelection();
 
-			Assert.NotEqual(Game.OK, game.ErrorMessage);
-			Assert.False(game.IsOver);
-		}
-
-		[Fact]
-		public void CanChangeSelectedDoor_AfterOpeningOne()
-		{
-			var game = new Game();
-
-			var notWinnerDoor = (DoorNumber)(game.WinnerDoor == 1 ? 2 : 1);
-			game.SelectedDoor = (DoorNumber)3;
-			game.OpenDoor(notWinnerDoor);
-			game.ChangeSelectedDoor();
-
-			Assert.Equal(Game.OK, game.ErrorMessage);
-			Assert.False(game.IsOver);
-		}
-
-		[Fact]
-		public void CanNotChangeSelectedDoor_IfGameIsOver()
-		{
-			var game = new Game();
-			
-			var notWinnerDoor = (DoorNumber)(game.WinnerDoor == 1 ? 2 : 1);
-
-			game.SelectedDoor = (DoorNumber)3;
-			game.OpenDoor(notWinnerDoor);
-			game.OpenDoor(game.WinnerDoor);
-
-			var gameIsOver = game.IsOver;
-			game.ChangeSelectedDoor();
-
-			Assert.True(gameIsOver);
-			Assert.NotEqual(Game.OK, game.ErrorMessage);
-		}
-
-		[Fact]
-		public void CanNotChangeSelectedDoor_BeforeOneIsOpened()
-		{
-			var game = new Game();
-
-			var notWinnerDoor = (DoorNumber)(game.WinnerDoor == 1 ? 2 : 1);
-
-			game.SelectedDoor = notWinnerDoor;
-			game.ChangeSelectedDoor();
-
-			Assert.NotEqual(Game.OK, game.ErrorMessage);
-		}
-		[Theory]
-		[InlineData(-1)]
-		[InlineData(4)]
-		public void CanNotSelect_DoorNumber_OutOfBonds(int number)
-		{
-			var game = new Game();
-
-			Assert.Throws<ArgumentOutOfRangeException>(() => game.SelectedDoor = (DoorNumber)number);
+			// ACT & ASSERT
+			Assert.Throws<InvalidOperationException>(() => player.ChangeSelection());
 		}
 	}
 }

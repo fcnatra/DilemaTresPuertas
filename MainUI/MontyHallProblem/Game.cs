@@ -1,83 +1,78 @@
-﻿using ConsoleUI.MontyHallProblem.Interfaces;
+﻿using System.Xml.Linq;
 
-namespace MontyHallProblem
+namespace ConsoleUI.MontyHallProblem
 {
-
-	public class Game : IGameForPlayer
+	public class Game
 	{
-		public string ErrorMessage { get; private set; }
-		public const string OK = "OK";
+		private int _selectedDoor;
+		private readonly List<int> _gameDoors = new List<int>() { 1, 2, 3 };
+		private readonly int _winnerDoor;
 
-		public DoorNumber OpenedDoor { get; private set; }
-
-		public DoorNumber SelectedDoor { get; set; }
+		public int OpenedDoor { get; set; }
 
 		public bool IsOver { get; private set; }
 
 		public Game()
         {
-            WinnerDoor = (DoorNumber)new Random().Next(1, 4);
-			OpenedDoor = (DoorNumber)0;
-			IsOver = false;
-			SelectedDoor = (DoorNumber)0;
-			ErrorMessage = OK;
+			_winnerDoor = new Random().Next(1, 4);
+        }
+
+        public int SelectedDoor
+		{ 
+			get => _selectedDoor; 
+			set
+			{ 
+				if (!_gameDoors.Contains(value))
+					throw new ArgumentOutOfRangeException(nameof(value), $"{value} Is not a valid door. Door must be in ({_gameDoors.ToString()}).");
+
+				_selectedDoor = value;
+			}
 		}
 
-		public DoorNumber WinnerDoor { get; private set; }
+		public Host HostOfTheGame { get; internal set; }
 
-		public bool WinnerDoorIsSelected => SelectedDoor == WinnerDoor;
-
-		public void OpenDoor(DoorNumber doorToOpen)
+		public List<int> GetAvailableDoors()
 		{
-			if (OpenedDoor == doorToOpen)
-				ErrorMessage = "Can not open a door that is already opened";
-			else if (SelectedDoor == 0)
-				ErrorMessage = "To open a door, first select a door. Opening a door can be done from the second step of the game";
+			List<int> availableDoors;
+			if (this.IsOver)
+				availableDoors = new List<int>();
 			else
 			{
-				ErrorMessage = OK;
-				IsOver = (OpenedDoor != doorToOpen && OpenedDoor != 0);
-				OpenedDoor = doorToOpen;
+				availableDoors = _gameDoors.ToList();
+				availableDoors.Remove(SelectedDoor);
+				availableDoors.Remove(OpenedDoor);
 			}
+			return availableDoors;
 		}
 
-		public void ChangeSelectedDoor()
+		public int GetDoorNonWinnerToOffer()
 		{
-			if (IsOver || OpenedDoor == 0)
-			{
-				ErrorMessage = "Can not change doors before opening a door or after game is over";
-			}
+			List<int> availableDoors;
+			if (this.IsOver)
+				availableDoors = new List<int>();
 			else
 			{
-				ErrorMessage = OK;
-				var availableOptions = DoorNumber.All();
-				availableOptions.Remove(OpenedDoor);
-				availableOptions.Remove(SelectedDoor);
-				SelectedDoor = availableOptions.First();
+				availableDoors = _gameDoors.ToList();
+				availableDoors.Remove(SelectedDoor);
+				availableDoors.Remove(OpenedDoor);
 			}
+
+			availableDoors.Remove(_winnerDoor);
+
+			return availableDoors.First();
 		}
 
-		public static GameSummary Play(bool playerChoosesToChangeDoor)
+		internal void OpenSelection()
 		{
-			GameSummary gameSummary;
-			var game = new Game();
-
-			var player = new Player(game);
-			var monty = new MontyHall(game);
-
-			gameSummary.WinnerDoor = game.WinnerDoor;
-			gameSummary.SelectedDoor = player.SelectsDoor();
-			gameSummary.FirstDoorOpened = monty.OpensADoorWithAGoatBehind();
-
-			if (playerChoosesToChangeDoor)
-			{
-				player.ChangeSelectedDoor();
-			}
-
-			gameSummary.SecondDoorOpened = monty.OpensRemainingUnselectedDoor();
-			gameSummary.PlayerWins = game.WinnerDoorIsSelected;
-			return gameSummary;
+			this.IsOver = true;
 		}
 
+		internal int GetWinnerDoor(Host host)
+		{
+			if (host == HostOfTheGame)
+				return _winnerDoor;
+			else
+				throw new UnauthorizedAccessException();
+		}
 	}
 }
