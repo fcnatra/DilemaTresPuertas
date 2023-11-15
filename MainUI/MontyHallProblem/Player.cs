@@ -12,10 +12,8 @@
 		public int ChangeSelection()
 		{
 			var openedDoor = _game.GetAvailableDoors();
-			var doorToChange = openedDoor.First();
-			_game.SelectedDoor = doorToChange;
-
-			return doorToChange;
+			_game.SelectedDoor = openedDoor.First();
+			return _game.SelectedDoor;
 		}
 
 		public int OpenSelection()
